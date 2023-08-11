@@ -9,45 +9,7 @@ namespace PoliticasSettings.Repository
         {
             return query.Where(filter);
         }
-
-        public static IQueryable<T> ApplyFilter<T>(this IQueryable<T> query, T filterModel)
-        {
-            var filterProperties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-            Expression<Func<T, bool>> combinedFilter = null;
-
-            foreach (var property in filterProperties)
-            {
-                var value = property.GetValue(filterModel);
-
-                if (value != null)
-                {
-                    var parameter = Expression.Parameter(typeof(T), "x");
-                    var propertyAccess = Expression.Property(parameter, property);
-                    var propertyValue = Expression.Constant(value);
-                    var equality = Expression.Equal(propertyAccess, propertyValue);
-                    var lambda = Expression.Lambda<Func<T, bool>>(equality, parameter);
-
-                    if (combinedFilter == null)
-                    {
-                        combinedFilter = lambda;
-                    }
-                    else
-                    {
-                        var body = Expression.AndAlso(combinedFilter.Body, lambda.Body);
-                        combinedFilter = Expression.Lambda<Func<T, bool>>(body, combinedFilter.Parameters);
-                    }
-                }
-            }
-
-            if (combinedFilter != null)
-            {
-                return query.Where(combinedFilter);
-            }
-
-            return query;
-        }
-
+        
         public static Expression<Func<T, bool>> BuildDynamicFilterExpression<T>(T filterModel)
         {
             var parameter = Expression.Parameter(typeof(T), "p");
@@ -56,19 +18,28 @@ namespace PoliticasSettings.Repository
             var conditions = new List<Expression>();
             foreach (var property in filterProperties)
             {
-                if (property.PropertyType.IsClass && property.PropertyType != typeof(string))
+               
+                //Ignora las propiedades virtuales.
+                if (property.GetMethod.IsVirtual == true)
                 {
-                    continue; // Ignorar propiedades de navegación y virtuales
+                    continue;
                 }
 
+                //Si el campo es un llave primaria o foranea y esta en 0, se ignora.
                 var value = property.GetValue(filterModel);
-                if (value != null && !string.IsNullOrEmpty(value.ToString()))
+                if (property.Name.ToLower().Contains("id") == true && Equals(value, 0)) 
+                { 
+                    continue; 
+                }
+
+                if (value != null)
                 {
                     var propertyAccess = Expression.Property(parameter, property);
                     var propertyValue = Expression.Constant(value);
                     var equality = Expression.Equal(propertyAccess, propertyValue);
                     conditions.Add(equality);
                 }
+
             }
 
             if (conditions.Count == 0)
@@ -78,6 +49,7 @@ namespace PoliticasSettings.Repository
 
             var combinedConditions = conditions.Aggregate(Expression.And);
             var filterExpression = Expression.Lambda<Func<T, bool>>(combinedConditions, parameter);
+            Console.WriteLine();
             return filterExpression;
         }
 
