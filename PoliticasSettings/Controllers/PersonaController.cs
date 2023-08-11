@@ -76,11 +76,21 @@ namespace PoliticasSettings.Controllers
         [HttpGet("GetFiltered2")]
         public async Task<IActionResult> GetFiltered([FromQuery] Persona filterModel)
         {
-            Expression<Func<Persona, bool>> filterExpression = p => p.Nombre == filterModel.Nombre;
+            Expression<Func<Persona, bool>> filterExpression = p =>
+            (string.IsNullOrEmpty(filterModel.Nombre) || p.Nombre == filterModel.Nombre) &&
+            (string.IsNullOrEmpty(filterModel.Apellido) || p.Apellido == filterModel.Apellido);
+
             var filteredPersonas = await extensionService.GetFilteredAsync(filterExpression);
             return Ok(filteredPersonas);
         }
 
+        [HttpGet("GetFiltered3")]
+        public async Task<IActionResult> GetFiltered3([FromQuery] Persona filterModel)
+        {
+            var filterExpression = QueryExtension.BuildDynamicFilterExpression(filterModel);
+            var filteredPersonas = await extensionService.GetFilteredAsync(filterExpression);
+            return Ok(filteredPersonas);
+        }
 
         [HttpGet("GetFiltered")]
         public async Task<IActionResult> Get3()

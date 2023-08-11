@@ -47,6 +47,40 @@ namespace PoliticasSettings.Repository
 
             return query;
         }
+
+        public static Expression<Func<T, bool>> BuildDynamicFilterExpression<T>(T filterModel)
+        {
+            var parameter = Expression.Parameter(typeof(T), "p");
+            var filterProperties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            var conditions = new List<Expression>();
+            foreach (var property in filterProperties)
+            {
+                if (property.PropertyType.IsClass && property.PropertyType != typeof(string))
+                {
+                    continue; // Ignorar propiedades de navegación y virtuales
+                }
+
+                var value = property.GetValue(filterModel);
+                if (value != null && !string.IsNullOrEmpty(value.ToString()))
+                {
+                    var propertyAccess = Expression.Property(parameter, property);
+                    var propertyValue = Expression.Constant(value);
+                    var equality = Expression.Equal(propertyAccess, propertyValue);
+                    conditions.Add(equality);
+                }
+            }
+
+            if (conditions.Count == 0)
+            {
+                return null; // No hay condiciones para aplicar
+            }
+
+            var combinedConditions = conditions.Aggregate(Expression.And);
+            var filterExpression = Expression.Lambda<Func<T, bool>>(combinedConditions, parameter);
+            return filterExpression;
+        }
+
     }
 
 }
