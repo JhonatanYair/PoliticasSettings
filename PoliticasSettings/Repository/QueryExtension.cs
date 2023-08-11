@@ -34,10 +34,17 @@ namespace PoliticasSettings.Repository
 
                 if (value != null)
                 {
-                    var propertyAccess = Expression.Property(parameter, property);
-                    var propertyValue = Expression.Constant(value);
-                    var equality = Expression.Equal(propertyAccess, propertyValue);
-                    conditions.Add(equality);
+                        var propertyAccess = Expression.Property(parameter, property);
+                        var propertyValue = Expression.Constant(value);
+
+                        if (property.PropertyType == typeof(int?))
+                        {
+                            int? nullableValue = (int?)value;
+                            propertyValue = Expression.Constant(nullableValue, typeof(int?));
+
+                        } 
+                        var equality = Expression.Equal(propertyAccess, propertyValue);
+                        conditions.Add(equality);                    
                 }
 
             }
